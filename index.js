@@ -1,8 +1,9 @@
 const express = require('express');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
-require('dotenv').config();
 const cors = require('cors');
 const port = 5000;
+require('dotenv').config();
 
 app.use(cors());
 app.use(express.json());
@@ -11,7 +12,7 @@ app.get('/', (req, res) => {
   res.send('chocolate is running!!!');
 })
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@chocolate-management.r9to089.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -31,22 +32,48 @@ async function run() {
 
     const chocolateCollection = client.db("chocolateDB").collection("chocolateInfo");
 
-
     app.get('/chocolates', async (req, res) => {
       const cursor = chocolateCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     })
 
+    app.get('/chocolates/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await chocolateCollection.findOne(query);
+      res.send(result);
+    })
+
     app.post('/chocolates', async (req, res) => {
       const newChocolate = req.body;
-      console.log(newChocolate);
       const result = await chocolateCollection.insertOne(newChocolate);
       res.send(result);
     })
 
+    app.put('/chocolates/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateChocolate = req.body;
+      const newChocolate = {
+        $set: {
+          name: updateChocolate.name,
+          country: updateChocolate.country,
+          image: updateChocolate.image,
+          category: updateChocolate.category
+        },
+      };
+      const result = await chocolateCollection.updateOne(query, newChocolate, options);
+      res.send(result);
+    })
 
-
+    app.delete('/chocolates/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await chocolateCollection.deleteOne(query);
+      res.send(result);
+    })
 
 
     // Send a ping to confirm a successful connection
@@ -58,7 +85,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
 
 
 app.listen(port, () => {
